@@ -1,0 +1,292 @@
+---
+title: "Cyclistic Project"
+author: "Andrew Pace"
+date: "11/17/2021"
+output: html_document
+---
+
+# Cyclistic Data Analysis Project
+
+Cyclistic is a bike-sharing company in Chicago. For the purposes of this analysis, users fall into one of two categories: Cyclistic members and casual riders. Cyclistic members have purchased an annual membership, while casual riders have purchased either a single-ride pass or full-day pass. Cyclistic's goal is to convert casual riders into Cyclistic members. My task is to analyze how casual riders and Cyclistic members use the bikes differently. 
+
+## Load libraries
+
+```{r install packages}
+library(tidyverse)
+library(lubridate)
+```
+
+## Load CSV into dataframes
+
+```{r load ride dataset}
+ride_data <- read_csv("./data/edited_data/csv/combined_202011-202110.csv", 
+    col_types = cols(ride_length = col_time(format = "%H:%M:%S"), 
+        started_at = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+        ended_at = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+        start_station_id = col_character(), 
+        end_station_id = col_character()))
+```
+```{r load weather dataset}
+weather_data <- read.csv("./data/edited_data/csv/weather.csv")
+```
+
+## Data prep
+
+I'll separate out the date and month from the columns started_at and ended_at. The new columns will be start_date, start_month, and end_date. This will make my plotting code cleaner and easier to read.
+
+```{r separate date and time by creating new columns}
+ride_data$start_date <- as.Date(ride_data$started_at)
+ride_data$start_month <- month(ride_data$started_at,label = TRUE)
+ride_data$end_date <- as.Date(ride_data$ended_at)
+```
+
+## Data exploration
+
+### Number of rides of each user type
+
+```{r number of members and casual}
+casual_rider_count <- sum(ride_data$member_casual == 'casual')
+member_rider_count <- sum(ride_data$member_casual == 'member')
+total_rides <- casual_rider_count+member_rider_count
+  
+cat("Casual: ",casual_rider_count," rides (",casual_rider_count/total_rides*100,"%)\nMember: ",member_rider_count," rides (",member_rider_count/total_rides*100,"%)\nTotal: ", total_rides)
+```
+
+### Average ride length of each user type
+
+```{r plot - avg members and casual}
+casual_rider_avg <- time_length(mean(
+  filter(ride_data, member_casual == "casual")$ride_length),"minute")
+member_rider_avg <- time_length(mean(
+  filter(ride_data, member_casual == "member")$ride_length),"minute")
+cat("Casual: ",casual_rider_avg," minutes\nMember: ",member_rider_avg," minutes")
+```
+
+### Days of the week
+
+```{r plot - day of the week}
+plot_days_num <- ggplot(ride_data, aes(x=day_of_week, fill=member_casual))+
+  geom_bar(position="dodge")+
+  labs(
+    title="Number of rides taken each day of the week",
+    subtitle="Totaled over the course of a year",
+    y="Number of Rides", 
+    x="Day of the Week",
+    caption="November 2020 - October 2021",
+    fill="User Type")+
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+  scale_x_discrete(limits=c("1","2","3","4","5","6","7"),
+                   labels = c(
+                     "1"="Sunday",
+                     "2"="Monday",
+                     "3"="Tuesday",
+                     "4"="Wednesday",
+                     "5"="Thursday",
+                     "6"="Friday",
+                     "7"="Saturday"
+                   ))+
+  scale_fill_manual(values=c("#4E79A7", "#F28E2B"),
+                       breaks=c("casual", "member"),
+                       labels=c("Casual", "Member"))
+plot_days_num
+```
+
+```{r plot - avg rides each day of week }
+# Create new data frame to record averages for each day and user type
+avg_ride_day <- data.frame(matrix(ncol = 3, nrow = 0))
+# Name column headers
+colnames(avg_ride_day) <- c('member_casual', 'day', 'avg')
+days <- c(1:7)
+# Loop through days
+for (x in days){
+  # Calculate average for that day for each member type
+  mem_avg <- time_length(mean(
+  filter(ride_data,
+         member_casual == "member" &
+           day_of_week == x)$ride_length),"minute")
+  cas_avg <- time_length(mean(
+  filter(ride_data,
+         member_casual == "casual" &
+           day_of_week == x)$ride_length),"minute")
+  # Save date to data frame 
+  avg_ride_day[nrow(avg_ride_day) + 1, ] <- c('member',x,mem_avg)
+  avg_ride_day[nrow(avg_ride_day) + 1, ] <- c('casual',x,cas_avg)
+}
+# make the avg column numeric so the plot functions properly
+avg_ride_day$avg <- as.numeric(avg_ride_day$avg)
+plot_days_avg <- ggplot(avg_ride_day, aes(x=day, y=avg, fill=member_casual))+
+  geom_bar(position="dodge", stat="identity")+
+  labs(
+    title="Average ride time each day of the week",
+    subtitle="Averaged over the course of a year",
+    y="Length of Ride (minutes)", 
+    x="Day of the Week",
+    caption="November 2020 - October 2021",
+    fill="User Type")+
+  scale_y_continuous(limits = c(0, 35), breaks = seq(0, 35, by = 5))+
+  scale_x_discrete(limits=c("1","2","3","4","5","6","7"),
+                   labels = c(
+                     "1"="Sunday",
+                     "2"="Monday",
+                     "3"="Tuesday",
+                     "4"="Wednesday",
+                     "5"="Thursday",
+                     "6"="Friday",
+                     "7"="Saturday"
+                   ))+
+  scale_fill_manual(values=c("#4E79A7", "#F28E2B"),
+                       breaks=c("casual", "member"),
+                       labels=c("Casual", "Member"))
+plot_days_avg
+```
+
+### Monthly rides
+
+```{r plot - month}
+plot_month_num <- ggplot(ride_data, aes(x=start_month, fill=member_casual))+
+  geom_bar(position="dodge")+
+  labs(
+    title="Number of rides taken each month",
+    y="Number of Rides", 
+    x="Month",
+    caption="November 2020 - October 2021",
+    fill="User Type")+
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+  scale_fill_manual(values=c("#4E79A7", "#F28E2B"),
+                       breaks=c("casual", "member"),
+                       labels=c("Casual", "Member"))
+plot_month_num
+```
+
+```{r plot - avg rides each month of year }
+# Create new data frame to record averages for each month and user type
+avg_ride_month <- data.frame(matrix(ncol = 3, nrow = 0))
+# Name column headers
+colnames(avg_ride_month) <- c('member_casual', 'month', 'avg')
+months <- c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')
+# Loop through months
+for (x in months){
+  # Calculate average for that month for each member type
+  mem_avg <- time_length(mean(
+  filter(ride_data,
+         member_casual == "member" &
+           start_month == x)$ride_length),"minute")
+  cas_avg <- time_length(mean(
+  filter(ride_data,
+         member_casual == "casual" &
+           start_month == x)$ride_length),"minute")
+  # Save date to data frame 
+  avg_ride_month[nrow(avg_ride_month) + 1, ] <- c('member',x,mem_avg)
+  avg_ride_month[nrow(avg_ride_month) + 1, ] <- c('casual',x,cas_avg)
+}
+# make the avg column numeric so the plot functions properly
+avg_ride_month$avg <- as.numeric(avg_ride_month$avg)
+# If I plotted now, the months would be in alphabetical order. 
+# Reorder Months
+avg_ride_month$month <- factor(avg_ride_month$month,levels=c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'))
+plot_month_avg <- ggplot(avg_ride_month, aes(x=month, y=avg, fill=member_casual))+
+  geom_bar(position="dodge", stat="identity")+
+  labs(
+    title="Average ride time each month of the year",
+    y="Length of Ride (minutes)", 
+    x="Month",
+    caption="November 2020 - October 2021",
+    fill="User Type")+
+  scale_y_continuous(limits = c(0, 35), breaks = seq(0, 35, by = 5))+
+  scale_fill_manual(values=c("#4E79A7", "#F28E2B"),
+                       breaks=c("casual", "member"),
+                       labels=c("Casual", "Member"))
+plot_month_avg
+```
+
+### Monthly temperature averages
+
+To see if there is a correlation between rides and temperature I'll plot the monthly average temperatures recorded over the same time period.
+
+```{r}
+plot_temp_avg <- ggplot(weather_data, aes(month))+
+  # geom_line(aes(y=min), color="blue")+
+  geom_line(aes(y=avg), color="black")+
+  # geom_line(aes(y=max), color="red")+
+  labs(
+    title="Average temperature each month of the year",
+    y="Temperature (F)", 
+    x="Month",
+    caption="November 2020 - October 2021")+
+  scale_y_continuous(limits = c(10, 80), breaks = seq(10, 80, by = 10))+
+  scale_x_discrete(limits=
+                     c("1","2","3","4","5","6","7","8","9","10","11","12"),
+                   labels = 
+                     c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'))
+plot_temp_avg
+```
+
+### Bike types
+
+```{r plot - bike type}
+plot_bike_num <- ggplot(ride_data, aes(x=rideable_type, fill=member_casual))+
+  geom_bar(position="dodge")+
+  labs(
+    title="Number of rides taken on each type of bike available",
+    y="Number of Rides", 
+    x="Bike Types",
+    caption="November 2020 - October 2021",
+    fill="User Type")+
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+  scale_x_discrete(limits=c("classic_bike","docked_bike","electric_bike"),
+                   labels = c(
+                     "classic_bike"="Classic",
+                     "docked_bike"="Docked",
+                     "electric_bike"="Electric"
+                   ))+
+  scale_fill_manual(values=c("#4E79A7", "#F28E2B"),
+                       breaks=c("casual", "member"),
+                       labels=c("Casual", "Member"))
+plot_bike_num
+```
+
+
+```{r plot - avg rides each type of bike }
+# Create new data frame to record averages for each bike type and user type
+avg_ride_bike <- data.frame(matrix(ncol = 3, nrow = 0))
+# Name column headers
+colnames(avg_ride_bike) <- c('member_casual', 'bike', 'avg')
+bikes <- c('classic_bike','docked_bike','electric_bike')
+# Loop through days
+for (x in bikes){
+  # Calculate average for that bike for each member type
+  mem_avg <- time_length(mean(
+  filter(ride_data,
+         member_casual == "member" &
+           rideable_type == x)$ride_length),"minute")
+  cas_avg <- time_length(mean(
+  filter(ride_data,
+         member_casual == "casual" &
+           rideable_type == x)$ride_length),"minute")
+  # Save date to data frame 
+  avg_ride_bike[nrow(avg_ride_bike) + 1, ] <- c('member',x,mem_avg)
+  avg_ride_bike[nrow(avg_ride_bike) + 1, ] <- c('casual',x,cas_avg)
+}
+# make the avg column numeric so the plot functions properly
+avg_ride_bike$avg <- as.numeric(avg_ride_bike$avg)
+
+plot_bike_avg <- ggplot(avg_ride_bike, aes(x=bike, y=avg, fill=member_casual))+
+  geom_bar(position="dodge", stat="identity")+
+  labs(
+    title="Average ride time on each type of bike available",
+    y="Length of Ride (minutes)", 
+    x="Bike Types",
+    caption="November 2020 - October 2021",
+    fill="User Type")+
+  scale_y_continuous(limits = c(0, 55), breaks = seq(0, 55, by = 5))+
+  scale_x_discrete(limits=c("classic_bike","docked_bike","electric_bike"),
+                   labels = c(
+                     "classic_bike"="Classic",
+                     "docked_bike"="Docked",
+                     "electric_bike"="Electric"
+                   ))+
+  scale_fill_manual(values=c("#4E79A7", "#F28E2B"),
+                       breaks=c("casual", "member"),
+                       labels=c("Casual", "Member"))
+plot_bike_avg
+```
