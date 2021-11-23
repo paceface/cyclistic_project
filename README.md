@@ -1,6 +1,6 @@
 # Cyclistic case study analysis project
 
-Cyclistic is a (fictitious) bike-sharing company with more than 5,800 bicycles and 600 rental stations throughout Chicago. The company has determined that they can increase revenue by converting pay-as-you-go riders into annual members. In this project I analyze data collected from every bike ride over the course of a year to determine how the annual members and pay-as-you-go riders use the service differently. At the end I provide three key data-informed takeaways to the executive and marketing teams in order to help them reach their goal.
+In this case study I used data from a bike-sharing company to evaluate how annual members and casual riders use the service differently. I was then able to provide recommendations about converting casual riders into annual members. 
 
 ## Work not included in the repository
 

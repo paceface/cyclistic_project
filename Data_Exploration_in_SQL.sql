@@ -1,3 +1,5 @@
+-- This exploration happened in Google's BigQuery SQL workspace
+
 -- Data cleaning
 
 -- Find and remove rides that started or stopped at a maintenance facility.
@@ -38,7 +40,12 @@ SELECT member_casual, num_rides, total_seconds/num_rides/60 AS avg_ride
 FROM `cyclistic.calc_avg_ride`
 
 
--- Find avg number of rides and ride length for each day of the week for each user type
+-- Find total rides, avg number of rides, and ride length for each day of the week for each user type
+-- Total number of rides
+SELECT day_of_week, member_casual, count(*) as num_rides
+FROM `cyclistic.ride_data`
+GROUP BY day_of_week, member_casual
+
 -- Create view with initial calculations per day of the week, per user type: num_rides, total_seconds
 CREATE VIEW cyclistic.calc_avg_ride_day(num_rides, total_seconds, day_of_week, member_casual) AS
     SELECT count(*) as num_rides, SUM(((EXTRACT(hour FROM ride_length) * 3600) + (EXTRACT(minute FROM ride_length) * 60) + EXTRACT(second FROM ride_length))) as total_seconds, day_of_week, member_casual

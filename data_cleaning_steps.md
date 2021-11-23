@@ -8,4 +8,4 @@
 7.	There are a few bike stations that appear to be maintenance/testing facilities. Rides starting or ending at these have been deleted.
 8.	There are several rides that lasted many days or weeks. Rides lasting 24 hours or more have been deleted.
 9.	Each month’s XLSX file was saved as a CSV file.
-10.	Using a basic text editor I combined the CSV files into a single file for use in SQL and RStudio.
+10.	Using a basic text editor I combined the CSV files into a single file for use in SQL and RStudio in order to handle the large dataset.
